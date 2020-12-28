@@ -112,16 +112,16 @@ impl Combination {
         let n3 = (cards.wrapping_shr(2 * 13) & all_numbers) as u32;
         let n4 = (cards.wrapping_shr(3 * 13) & all_numbers) as u32;
         let numbers = n1 | n2 | n3 | n4;
-        let is_straight = (numbers & 0b11111) == 0b11111 ||               // 2-6
-                        (numbers & 0b111110) == 0b111110 ||               // 3-7
-                        (numbers & 0b1111100) == 0b1111100 ||             // 4-8
-                        (numbers & 0b11111000) == 0b11111000 ||           // 5-9
-                        (numbers & 0b111110000) == 0b111110000 ||         // 6-10
-                        (numbers & 0b1111100000) == 0b1111100000 ||       // 7-J
-                        (numbers & 0b11111000000) == 0b11111000000 ||     // 8-Q
-                        (numbers & 0b111110000000) == 0b111110000000 ||   // 9-K
-                        (numbers & 0b1111100000000) == 0b1111100000000 || // 10-A
-                        (numbers & 0b1111000000001) == 0b1000000001111; // A-5
+        let is_straight = numbers == 0b11111 ||        // 2-6
+                          numbers == 0b111110 ||       // 3-7
+                          numbers == 0b1111100 ||      // 4-8
+                          numbers == 0b11111000 ||     // 5-9
+                          numbers == 0b111110000 ||    // 6-10
+                          numbers == 0b1111100000 ||   // 7-J
+                          numbers == 0b11111000000 ||  // 8-Q
+                          numbers == 0b111110000000 || // 9-K
+                          numbers == 0b1111100000000 ||// 10-A
+                          numbers == 0b1000000001111; // A-5
         let flush_value = (cards & 0b11111111111111111111111111)
             .max(cards & !0b11111111111111111111111111)
             .count_ones();
