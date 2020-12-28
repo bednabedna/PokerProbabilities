@@ -18,7 +18,7 @@ impl CardSet {
     fn none() -> Self {
         Self(0)
     }
-
+    #[allow(dead_code)]
     fn all() -> Self {
         Self(0b1111111111111111111111111111111111111111111111111111)
     }
@@ -330,56 +330,6 @@ fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
             1
         })
         .sum()
-}
-
-fn print_wins(wins: u32, games: u32) {
-    println!(
-        "{}/{} = {:.2}%",
-        wins,
-        games,
-        wins as f64 / games as f64 * 100.0
-    );
-}
-
-#[allow(dead_code)]
-fn random_example() {
-    let start = Instant::now();
-    let samples = 1000000;
-    let players = 6;
-    let hand = CardSet::all().draw(2); // CardSet::from_str("A♦A♥").unwrap();
-    let table_1 = hand.not().draw(1);
-    let table_2 = table_1.add(&hand.add(&table_1).not().draw(1));
-    let table_3 = table_2.add(&hand.add(&table_2).not().draw(1));
-
-    let s0 = simulate(hand, CardSet::none(), players, samples);
-    let s1 = simulate(hand, table_1, players, samples);
-    let s2 = simulate(hand, table_2, players, samples);
-    let s3 = simulate(hand, table_3, players, samples);
-
-    let comb_0 = hand.comb().comb_type;
-    let comb_1 = hand.add(&table_1).comb().comb_type;
-    let comb_2 = hand.add(&table_2).comb().comb_type;
-    let comb_3 = hand.add(&table_3).comb().comb_type;
-
-    println!("time {:?}\n", start.elapsed());
-
-    print_wins(1, players);
-    println!();
-
-    println!("({:?}) {:?}", hand, comb_0);
-    print_wins(s0, samples);
-    println!();
-
-    println!("({:?}) ({:?}) {:?}", hand, table_1, comb_1);
-    print_wins(s1, samples);
-    println!();
-
-    println!("({:?}) ({:?}) {:?}", hand, table_2, comb_2);
-    print_wins(s2, samples);
-    println!();
-
-    println!("({:?}) ({:?}) {:?}", hand, table_3, comb_3);
-    print_wins(s3, samples);
 }
 
 #[derive(FromArgs)]
