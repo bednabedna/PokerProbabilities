@@ -7,6 +7,8 @@ The values are '1' or 'A', '2' to '10', 'J' or '11', 'Q' or '12', 'K' or '13'.
 Suits are 'C' or '♥', 'Q' or '♦', 'P' or '♠' and 'F' or '♣'.
 All values and suits can be also lowercase.
 
+
+```
 Options:
   -h, --hand        cards in hand, maximum 2, defaults to no cards
   -t, --table       cards on the table, maximum 3, defaults to no cards
@@ -14,3 +16,4 @@ Options:
   -g, --games       number of rounds to simulate, default to 1 million
   --time            switch used to request execution time
   --help            display usage information
+```
