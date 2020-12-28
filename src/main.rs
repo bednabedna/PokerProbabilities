@@ -351,7 +351,7 @@ struct SimulationArgs {
     #[argh(option, default = "4", short = 'p')]
     players: u32,
 
-    /// number of rounds to simulate, default to 1 million
+    /// number of rounds to simulate, defaults to 1 million
     #[argh(option, default = "1000000", short = 'g')]
     games: u32,
 
