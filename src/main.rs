@@ -235,8 +235,8 @@ fn parse_one_card(chars: &mut Peekable<Chars>) -> Result<Option<CardSet>, CardPa
         .to_ascii_uppercase();
 
     let suit = match suit_char {
-        '♦' | 'Q' => Ok(0),
-        '♥' | 'C' => Ok(13),
+        '♦' | 'Q' => Ok(0 * 13),
+        '♥' | 'C' => Ok(1 * 13),
         '♠' | 'P' => Ok(2 * 13),
         '♣' | 'F' => Ok(3 * 13),
         _ => Err(CardParseError::InvalidSuit(suit_char)),
