@@ -13,7 +13,7 @@ Options:
   -h, --hand        cards in hand, maximum 2, defaults to no cards
   -t, --table       cards on the table, maximum 3, defaults to no cards
   -p, --players     number of players in game, defaults to 4
-  -g, --games       number of rounds to simulate, default to 1 million
+  -g, --games       number of rounds to simulate, defaults to 1 million
   --time            display execution time
   --help            display usage information
 ```
