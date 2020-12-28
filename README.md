@@ -1,5 +1,5 @@
 # PokerProbabilities
-Estimate Poker Texas Holdem winning probability simulating games with the cards provided.
+CLI application used to estimate Poker Texas Holdem winning probability simulating games with the cards provided.
 
 
 Cards are given as a string, for example "4CAQ" means 2 cards: 4 of ♥ and ace of ♦.
