@@ -1,6 +1,7 @@
 use argh::FromArgs;
 use rand::distributions::{Distribution, Uniform};
 use rayon::prelude::*;
+use std::ops;
 use std::{cmp::Ordering, fmt::Debug, time::Instant};
 use std::{
     iter::Peekable,
@@ -21,18 +22,6 @@ impl CardSet {
     #[allow(dead_code)]
     fn all() -> Self {
         Self(0b1111111111111111111111111111111111111111111111111111)
-    }
-
-    fn not(&self) -> CardSet {
-        CardSet((!self.0) & 0b1111111111111111111111111111111111111111111111111111)
-    }
-
-    fn add(&self, other: &CardSet) -> CardSet {
-        CardSet(self.0 | other.0)
-    }
-
-    fn and(&self, other: &CardSet) -> CardSet {
-        CardSet(self.0 & other.0)
     }
 
     fn draw(&mut self, mut count: u32) -> CardSet {
@@ -62,6 +51,36 @@ impl CardSet {
 
     fn is_empty(&self) -> bool {
         self.0 == 0
+    }
+}
+
+impl ops::Not for CardSet {
+    type Output = CardSet;
+
+    fn not(self) -> CardSet {
+        CardSet((!self.0) & 0b1111111111111111111111111111111111111111111111111111)
+    }
+}
+
+impl ops::BitOr<CardSet> for CardSet {
+    type Output = CardSet;
+
+    fn bitor(self, rhs: CardSet) -> CardSet {
+        CardSet(self.0 | rhs.0)
+    }
+}
+
+impl ops::BitOrAssign<CardSet> for CardSet {
+    fn bitor_assign(&mut self, rhs: CardSet) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl ops::BitAnd<CardSet> for CardSet {
+    type Output = CardSet;
+
+    fn bitand(self, rhs: CardSet) -> CardSet {
+        CardSet(self.0 & rhs.0)
     }
 }
 
@@ -252,8 +271,8 @@ impl FromStr for CardSet {
         let mut chars = s.chars().peekable();
         let mut cards = CardSet::none();
         while let Some(card) = parse_one_card(&mut chars)? {
-            if cards.and(&card).is_empty() {
-                cards = cards.add(&card);
+            if (cards & card).is_empty() {
+                cards |= card;
             } else {
                 return Err(CardParseError::RepeatedCard(card));
             }
@@ -307,22 +326,22 @@ impl Debug for CardSet {
 }
 
 fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
-    let players = players - 1;
+    assert!(players >= 2 && players <= 8);
     assert_eq!(hand.count_cards(), 2);
+    assert!((hand & table).is_empty());
     let table_cards_count = table.count_cards();
     assert!(table_cards_count <= 3);
-    let my_cards = hand.add(&table);
-    assert!(my_cards.count_cards() <= 5);
-    let deck = my_cards.not();
+    let deck = !(hand | table);
     let table_draw_count = 3 - table_cards_count;
+    let opponents = players - 1;
     (0..games)
         .into_par_iter()
         .map(|_| {
             let mut deck = deck;
-            let table = table.add(&deck.draw(table_draw_count));
-            let my_comb = my_cards.add(&table).comb();
-            for _ in 0..players {
-                let player_comb = deck.draw(2).add(&table).comb();
+            let table = table | deck.draw(table_draw_count);
+            let my_comb = (hand | table).comb();
+            for _ in 0..opponents {
+                let player_comb = (deck.draw(2) | table).comb();
                 if player_comb > my_comb {
                     return 0;
                 }
@@ -333,16 +352,15 @@ fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
 }
 
 fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
-    assert!(players > 1);
+    assert!(players >= 2 && players <= 8);
     let hc = hand.count_cards();
     assert!(hc <= 2);
-
+    let hand_draw_count = 2 - hc;
     let table_cards_count = table.count_cards();
     assert!(table_cards_count <= 3);
-    let my_cards = hand.add(&table);
-    assert!(my_cards.count_cards() <= 5);
-    let deck = my_cards.not();
+    assert!((hand & table).is_empty());
     let table_draw_count = 3 - table_cards_count;
+    let deck = !(hand | table);
     let mut results = Vec::with_capacity(players as usize);
     let mut rows = Vec::with_capacity(players as usize);
 
@@ -350,13 +368,13 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
         results.clear();
         rows.clear();
         let mut deck = deck;
-        let hand = hand.add(&deck.draw(2 - hc));
-        let table = table.add(&deck.draw(table_draw_count));
+        let hand = hand | deck.draw(hand_draw_count);
+        let table = table | deck.draw(table_draw_count);
 
-        results.push((hand, hand.add(&table).comb()));
+        results.push((hand, (hand | table).comb()));
         for _ in 0..players - 1 {
             let player_cards = deck.draw(2);
-            let player_comb = player_cards.add(&table).comb();
+            let player_comb = (player_cards | table).comb();
             results.push((player_cards, player_comb));
         }
         let winning_combination = results.iter().map(|v| v.1).max().unwrap();
@@ -444,10 +462,8 @@ fn execute() -> Result<(), SimulationError> {
         Err(SimulationError::InvalidHand(hand))
     } else if table.count_cards() > 3 {
         Err(SimulationError::InvalidTable(table))
-    } else if !table.and(&hand).is_empty() {
-        Err(SimulationError::InvalidHandTableComposition(
-            table.and(&hand),
-        ))
+    } else if !(table & hand).is_empty() {
+        Err(SimulationError::InvalidHandTableComposition(table & hand))
     } else {
         let maybe_timing = if args.time {
             Some(Instant::now())
@@ -475,7 +491,7 @@ fn execute() -> Result<(), SimulationError> {
                 "({:?}) ({:?}) {:?}",
                 hand,
                 table,
-                hand.add(&table).comb().comb_type
+                (hand | table).comb().comb_type
             );
         }
 

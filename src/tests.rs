@@ -7,7 +7,7 @@ fn check_parse(input: &str, card_index: usize) {
 
 #[test]
 fn none_all() {
-    assert_eq!(CardSet::none().not(), CardSet::all());
+    assert_eq!(!CardSet::none(), CardSet::all());
 }
 
 #[test]
@@ -73,10 +73,9 @@ fn parse() {
 fn parse_multiple() {
     assert_eq!(
         CardSet::from_str("8♠2♣Q♣"),
-        Ok(CardSet::from_str("8♠")
-            .unwrap()
-            .add(&CardSet::from_str("2♣").unwrap())
-            .add(&CardSet::from_str("Q♣").unwrap()))
+        Ok(CardSet::from_str("8♠").unwrap()
+            | CardSet::from_str("2♣").unwrap()
+            | CardSet::from_str("Q♣").unwrap())
     );
     assert_eq!(CardSet::from_str("8♠2♣Q♣").unwrap().count_cards(), 3);
 }
@@ -89,7 +88,7 @@ fn comb(input: &[&str]) -> Combination {
     let cards = input
         .iter()
         .map(|s| CardSet::from_str(s).unwrap())
-        .fold(CardSet::none(), |a, b| a.add(&b));
+        .fold(CardSet::none(), |a, b| a | b);
     Combination::new(cards)
 }
 
