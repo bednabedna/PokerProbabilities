@@ -65,7 +65,7 @@ impl CardSet {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug, Copy)]
 enum CombType {
     StraightFlush = 1 << 31,
     Poker = 1 << 30,
@@ -78,7 +78,7 @@ enum CombType {
     HighCard = 0,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Clone, Copy)]
 struct Combination {
     comb_type: CombType,
     comb_value: u32,
@@ -306,7 +306,6 @@ impl Debug for CardSet {
 }
 
 fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
-    //let mut wins = 0;
     let players = players - 1;
     assert_eq!(hand.count_cards(), 2);
     let table_cards_count = table.count_cards();
@@ -332,6 +331,67 @@ fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
         .sum()
 }
 
+fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
+    assert!(players > 1);
+    assert_eq!(hand.count_cards(), 2);
+    let table_cards_count = table.count_cards();
+    assert!(table_cards_count <= 3);
+    let my_cards = hand.add(&table);
+    assert!(my_cards.count_cards() <= 5);
+    let deck = my_cards.not();
+    let table_draw_count = 3 - table_cards_count;
+    let mut results = Vec::with_capacity(players as usize);
+    let mut rows = Vec::with_capacity(players as usize);
+
+    for _ in 0..games {
+        let mut deck = deck;
+        let table = table.add(&deck.draw(table_draw_count));
+        results.clear();
+        results.push({
+            let my_cards = my_cards.add(&table);
+            (my_cards, my_cards.comb())
+        });
+        for _ in 0..players - 1 {
+            let player_cards = deck.draw(2).add(&table);
+            let player_comb = player_cards.comb();
+            results.push((player_cards, player_comb));
+        }
+        let winning_combination = results.iter().map(|v| v.1).max().unwrap();
+        let you_won = winning_combination == results[0].1;
+
+        rows.clear();
+        rows.push((
+            format!("    ({:?}) ({:?})", hand, table),
+            format!("{:?}", results[0].1.comb_type),
+            if you_won { "[W]" } else { "" },
+        ));
+        for &(cards, comb) in results.iter().skip(1) {
+            let won = winning_combination == comb;
+            rows.push((
+                format!("    {:?}", cards),
+                format!("{:?}", comb.comb_type),
+                if won { "[W]" } else { "" },
+            ));
+        }
+        println!("ROUND {}\n", if you_won { "WON" } else { "LOST" });
+        let padding_1 = rows.iter().map(|row| row.0.chars().count()).max().unwrap();
+        let padding_2 = rows.iter().map(|row| row.1.chars().count()).max().unwrap();
+        for row in &rows {
+            println!(
+                "{:<w1$}   {:<w2$}   {}",
+                row.0,
+                row.1,
+                row.2,
+                w1 = padding_1,
+                w2 = padding_2
+            );
+        }
+
+        println!();
+    }
+    println!();
+}
+
 #[derive(FromArgs)]
 /// Estimate Poker Texas Holdem winning probabilities simulating games with the cards provided.
 /// Cards are given as a string, for example "4CAQ" means 2 cards: 4 of ♥ and ace of ♦.
@@ -354,6 +414,10 @@ struct SimulationArgs {
     /// number of rounds to simulate, defaults to 1 million
     #[argh(option, default = "1000000", short = 'g')]
     games: u32,
+
+    /// print provided number of simulated rounds, optional
+    #[argh(option, default = "0", short = 's')]
+    show: u32,
 
     #[argh(switch)]
     /// display execution time
@@ -392,6 +456,10 @@ fn execute() -> Result<(), SimulationError> {
         } else {
             None
         };
+
+        if args.show > 0 {
+            print_simulation(hand, table, args.players, args.show);
+        }
 
         let wins = if hand.is_empty() {
             // without a hand, winning probabilities are equal
