@@ -124,6 +124,7 @@ impl Combination {
             .unwrap_or(12)
     }
     fn new(cards: CardSet) -> Self {
+        debug_assert!(cards.count_cards() <= 5);
         let cards = cards.0;
         let all_numbers = 0b1111111111111;
         let n1 = (cards & all_numbers) as u32;
@@ -148,7 +149,12 @@ impl Combination {
         if is_straight && is_flush {
             Combination {
                 comb_type: CombType::StraightFlush,
-                comb_value: numbers,
+                comb_value: if numbers == 0b1000000001111 {
+                    // lowest straight should have the minimum value
+                    0b1111
+                } else {
+                    numbers
+                },
             }
         } else {
             let poker_value = n1 & n2 & n3 & n4;
@@ -179,7 +185,12 @@ impl Combination {
                 } else if is_straight {
                     Combination {
                         comb_type: CombType::Straight,
-                        comb_value: numbers,
+                        comb_value: if numbers == 0b1000000001111 {
+                            // lowest straight should have the minimum value
+                            0b1111
+                        } else {
+                            numbers
+                        },
                     }
                 } else if is_tris {
                     Combination {
@@ -327,19 +338,21 @@ impl Debug for CardSet {
 
 fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
     assert!(players >= 2 && players <= 8);
-    assert_eq!(hand.count_cards(), 2);
+    let hc = hand.count_cards();
+    assert!(hc <= 2);
     assert!((hand & table).is_empty());
-    let table_cards_count = table.count_cards();
-    assert!(table_cards_count <= 3);
+    let hand_draw_count = 2 - hc;
+    let tc = table.count_cards();
+    assert!(tc <= 3);
     let deck = !(hand | table);
-    let table_draw_count = 3 - table_cards_count;
+    let table_draw_count = 3 - tc;
     let opponents = players - 1;
     (0..games)
         .into_par_iter()
         .map(|_| {
             let mut deck = deck;
             let table = table | deck.draw(table_draw_count);
-            let my_comb = (hand | table).comb();
+            let my_comb = (hand | deck.draw(hand_draw_count) | table).comb();
             for _ in 0..opponents {
                 let player_comb = (deck.draw(2) | table).comb();
                 if player_comb > my_comb {
