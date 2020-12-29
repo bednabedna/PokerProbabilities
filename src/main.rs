@@ -334,7 +334,9 @@ fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
 
 fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
     assert!(players > 1);
-    assert_eq!(hand.count_cards(), 2);
+    let hc = hand.count_cards();
+    assert!(hc <= 2);
+    let hand = hand.add(&hand.not().draw(2 - hc));
     let table_cards_count = table.count_cards();
     assert!(table_cards_count <= 3);
     let my_cards = hand.add(&table);
