@@ -347,10 +347,12 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
     let mut rows = Vec::with_capacity(players as usize);
 
     for round in 0..games {
+        results.clear();
+        rows.clear();
         let mut deck = deck;
         let hand = hand.add(&deck.draw(2 - hc));
         let table = table.add(&deck.draw(table_draw_count));
-        results.clear();
+
         results.push((hand, hand.add(&table).comb()));
         for _ in 0..players - 1 {
             let player_cards = deck.draw(2);
@@ -359,8 +361,6 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
         }
         let winning_combination = results.iter().map(|v| v.1).max().unwrap();
         let you_won = winning_combination == results[0].1;
-
-        rows.clear();
 
         for &(cards, comb) in results.iter() {
             let won = winning_combination == comb;
@@ -427,7 +427,7 @@ enum SimulationError {
     TableParseError(CardParseError),
     InvalidHand(CardSet),
     InvalidTable(CardSet),
-    NotEnoughPlayers,
+    WrongNumberOfPlayers(u32),
     InvalidHandTableComposition(CardSet),
 }
 
@@ -438,8 +438,8 @@ fn execute() -> Result<(), SimulationError> {
     let table =
         CardSet::from_str(&args.table).map_err(|err| SimulationError::TableParseError(err))?;
 
-    if args.players < 2 {
-        Err(SimulationError::NotEnoughPlayers)
+    if args.players < 2 || args.players > 8 {
+        Err(SimulationError::WrongNumberOfPlayers(args.players))
     } else if hand.count_cards() > 2 {
         Err(SimulationError::InvalidHand(hand))
     } else if table.count_cards() > 3 {
@@ -520,8 +520,8 @@ fn main() {
                 "Error: table and hand are sharing the following cards: {:?}",
                 composition
             ),
-            SimulationError::NotEnoughPlayers => {
-                println!("Error: not enough players, at least 2 required")
+            SimulationError::WrongNumberOfPlayers(players) => {
+                println!("Error: required 2-8 players, found {}", players)
             }
         }
     }
