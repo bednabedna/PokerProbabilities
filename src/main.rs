@@ -265,42 +265,43 @@ impl FromStr for CardSet {
 impl Debug for CardSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut is_first = true;
-        for i in 0..52 {
-            if (self.0.wrapping_shr(i) & 1) == 1 {
-                if is_first {
-                    is_first = false;
-                } else {
-                    write!(f, ",")?;
-                }
-                let number = i % 13;
-                let suit = i / 13;
-                if number == 8 {
-                    write!(f, "10")?;
-                } else {
+        for number in 0..13 {
+            for suit in 0..4 {
+                if (self.0.wrapping_shr(number + suit * 13) & 1) == 1 {
+                    if is_first {
+                        is_first = false;
+                    } else {
+                        write!(f, ",")?;
+                    }
+                    if number == 8 {
+                        write!(f, "10")?;
+                    } else {
+                        write!(
+                            f,
+                            "{}",
+                            match number {
+                                12 => 'A',
+                                11 => 'K',
+                                10 => 'Q',
+                                9 => 'J',
+                                _ => (('0' as u8 + 2) + number as u8) as char,
+                            },
+                        )?;
+                    }
                     write!(
                         f,
                         "{}",
-                        match number {
-                            12 => 'A',
-                            11 => 'K',
-                            10 => 'Q',
-                            9 => 'J',
-                            _ => (('0' as u8 + 2) + number as u8) as char,
-                        },
+                        match suit {
+                            0 => '♦',
+                            1 => '♥',
+                            2 => '♠',
+                            _ => '♣',
+                        }
                     )?;
                 }
-                write!(
-                    f,
-                    "{}",
-                    match suit {
-                        0 => '♦',
-                        1 => '♥',
-                        2 => '♠',
-                        _ => '♣',
-                    }
-                )?;
             }
         }
+
         Ok(())
     }
 }
