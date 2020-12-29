@@ -336,7 +336,7 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
     assert!(players > 1);
     let hc = hand.count_cards();
     assert!(hc <= 2);
-    let hand = hand.add(&hand.not().draw(2 - hc));
+
     let table_cards_count = table.count_cards();
     assert!(table_cards_count <= 3);
     let my_cards = hand.add(&table);
@@ -346,29 +346,23 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
     let mut results = Vec::with_capacity(players as usize);
     let mut rows = Vec::with_capacity(players as usize);
 
-    for _ in 0..games {
+    for round in 0..games {
         let mut deck = deck;
+        let hand = hand.add(&deck.draw(2 - hc));
         let table = table.add(&deck.draw(table_draw_count));
         results.clear();
-        results.push({
-            let my_cards = my_cards.add(&table);
-            (my_cards, my_cards.comb())
-        });
+        results.push((hand, hand.add(&table).comb()));
         for _ in 0..players - 1 {
-            let player_cards = deck.draw(2).add(&table);
-            let player_comb = player_cards.comb();
+            let player_cards = deck.draw(2);
+            let player_comb = player_cards.add(&table).comb();
             results.push((player_cards, player_comb));
         }
         let winning_combination = results.iter().map(|v| v.1).max().unwrap();
         let you_won = winning_combination == results[0].1;
 
         rows.clear();
-        rows.push((
-            format!("    ({:?}) ({:?})", hand, table),
-            format!("{:?}", results[0].1.comb_type),
-            if you_won { "[W]" } else { "" },
-        ));
-        for &(cards, comb) in results.iter().skip(1) {
+
+        for &(cards, comb) in results.iter() {
             let won = winning_combination == comb;
             rows.push((
                 format!("    {:?}", cards),
@@ -376,7 +370,7 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
                 if won { "[W]" } else { "" },
             ));
         }
-        println!("ROUND {}\n", if you_won { "WON" } else { "LOST" });
+        println!("{} ({:?})\n", if you_won { "WON" } else { "LOST" }, table);
         let padding_1 = rows.iter().map(|row| row.0.chars().count()).max().unwrap();
         let padding_2 = rows.iter().map(|row| row.1.chars().count()).max().unwrap();
         for row in &rows {
@@ -389,10 +383,11 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
                 w2 = padding_2
             );
         }
-
-        println!();
+        if round < games - 1 {
+            println!("\n--------------------------\n");
+        }
     }
-    println!();
+    println!("\n");
 }
 
 #[derive(FromArgs)]
