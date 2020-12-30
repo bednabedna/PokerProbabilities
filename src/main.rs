@@ -105,7 +105,7 @@ struct SimulationArgs {
     #[argh(option, default = "String::new()", short = 'h')]
     hand: String,
 
-    /// cards on the table, maximum 3, defaults to no cards
+    /// cards on the table, maximum 5, defaults to no cards
     #[argh(option, default = "String::new()", short = 't')]
     table: String,
 
