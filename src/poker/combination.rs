@@ -4,7 +4,7 @@ pub struct Combination(u32);
 
 #[derive(Eq, PartialEq, Clone, Debug, Copy)]
 pub enum CombinationType {
-    RoyalFlush = (1 << 31) | 0b1000000000000,
+    RoyalFlush = (1 << 31) + 12,
     StraightFlush = 1 << 31,
     Poker = 1 << 30,
     FullHouse = 1 << 29,
@@ -90,7 +90,7 @@ impl Combination {
             "HighCard"
         }
     }
-    fn straight_value(numbers: u32) -> u32 {
+    fn straight_bits(numbers: u32) -> u32 {
         // add ace (numbers >> 12) to check for the minimal straight (A-5)
         let numbers_ace = (numbers << 1) | (numbers >> 12);
         numbers & numbers_ace & (numbers_ace << 1) & (numbers_ace << 2) & (numbers_ace << 3)
@@ -109,37 +109,42 @@ impl Combination {
             .max((n4.count_ones(), n4));
         let is_flush = flush_count >= 5;
         if is_flush {
-            let straight_value = Combination::straight_value(flush_value);
+            let straight_value = Combination::straight_bits(flush_value);
             let is_royal_flush = straight_value != 0;
             if is_royal_flush {
                 // highest straight wins
-                return Combination(CombinationType::StraightFlush as u32 | straight_value);
+                return Combination(
+                    CombinationType::StraightFlush as u32 | Combination::msb(straight_value),
+                );
             }
         }
         let numbers = n1 | n2 | n3 | n4;
-        let poker_value = n1 & n2 & n3 & n4;
-        let is_poker = poker_value != 0;
+        let poker_bits = n1 & n2 & n3 & n4;
+        let is_poker = poker_bits != 0;
         if is_poker {
+            let highest_poker = Combination::msb(poker_bits);
             // highest poker or highest card not in poker
             Combination(
                 CombinationType::Poker as u32
-                    | ((Combination::msb(poker_value) + 1) << 13)
-                    | Combination::msb(numbers & !poker_value),
+                    | ((highest_poker + 1) << 13)
+                    | Combination::msb(numbers & !(1 << highest_poker)),
             )
         } else {
-            let tris_value = (n1 & n2 & n3) | (n1 & n2 & n4) | (n1 & n3 & n4) | (n2 & n3 & n4);
-            let pair_value =
-                ((n1 & n2) | (n1 & n3) | (n1 & n4) | (n2 & n3) | (n2 & n4) | (n3 & n4))
-                    & !tris_value;
-            let is_tris = tris_value != 0;
-            let is_pair = pair_value != 0;
+            let tris_bits = (n1 & n2 & n3) | (n1 & n2 & n4) | (n1 & n3 & n4) | (n2 & n3 & n4);
+            let highest_tris = Combination::msb(tris_bits);
+            let highest_tris_bit = tris_bits & (1 << highest_tris);
+            // all pairs that aren't also part of the highest tris_value
+            let pair_bits = ((n1 & n2) | (n1 & n3) | (n1 & n4) | (n2 & n3) | (n2 & n4) | (n3 & n4))
+                & !highest_tris_bit;
+            let is_tris = highest_tris_bit != 0;
+            let is_pair = pair_bits != 0;
             let is_full_house = is_tris && is_pair;
             if is_full_house {
                 // highest tries or highest pair
                 Combination(
                     CombinationType::FullHouse as u32
-                        | ((Combination::msb(tris_value) + 1) << 13)
-                        | Combination::msb(pair_value),
+                        | ((highest_tris + 1) << 13)
+                        | Combination::msb(pair_bits),
                 )
             } else if is_flush {
                 // 5 highest cards
@@ -147,29 +152,32 @@ impl Combination {
                     CombinationType::Flush as u32 | Combination::keep_n_bits(flush_value, 5),
                 )
             } else {
-                let straight_value = Combination::straight_value(numbers);
-                let is_straight = straight_value != 0;
+                let straight_bits = Combination::straight_bits(numbers);
+                let is_straight = straight_bits != 0;
                 if is_straight {
                     // highest straight
-                    Combination(CombinationType::Straight as u32 | straight_value)
+                    Combination(CombinationType::Straight as u32 | Combination::msb(straight_bits))
                 } else if is_tris {
                     Combination(
                         CombinationType::Tris as u32| // uses bit 26
-                         ((Combination::msb(tris_value) + 1) << 13) // uses bits 18 to 13
-                            | Combination::keep_n_bits(numbers & !tris_value, 2), // highest tris or 2 highest cards
+                         ((highest_tris + 1) << 13) // uses bits 18 to 13
+                            | Combination::keep_n_bits(numbers & !highest_tris_bit, 2), // highest tris or 2 highest cards
                     )
-                } else if pair_value.count_ones() > 1 {
-                    Combination(
-                        CombinationType::TwoPairs as u32 | // uses bit 25
-                      (Combination::keep_n_bits(pair_value, 2) << 6) // uses bits 19 to 6
-                            | Combination::msb(numbers & !pair_value), // highest pair or second highest pair or highest card
-                    )
-                } else if pair_value != 0 {
-                    Combination(
-                        CombinationType::Pair as u32| // uses bit 24
-                      ((Combination::msb(pair_value) + 1) << 13) // uses bits 18 to 13
-                            | Combination::keep_n_bits(numbers & !pair_value, 3), // pair or highest 3 cards
-                    )
+                } else if pair_bits != 0 {
+                    if pair_bits.count_ones() >= 2 {
+                        let first_2_pairs = Combination::keep_n_bits(pair_bits, 2);
+                        Combination(
+                            CombinationType::TwoPairs as u32  // uses bit 25
+                            | (first_2_pairs << 6) // uses bits 19 to 6
+                            | Combination::msb(numbers & !first_2_pairs), // highest pair or second highest pair or highest card
+                        )
+                    } else {
+                        Combination(
+                            CombinationType::Pair as u32 // uses bit 24
+                            | ((Combination::msb(pair_bits) + 1) << 13) // uses bits 18 to 13
+                            | Combination::keep_n_bits(numbers & !pair_bits, 3), // pair or highest 3 cards
+                        )
+                    }
                 } else {
                     Combination(
                         CombinationType::HighCard as u32 | Combination::keep_n_bits(numbers, 5), // highest 5 cards
