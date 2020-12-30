@@ -1,4 +1,4 @@
-use super::{cardset::CardSet, combination::CombType, combination::Combination};
+use super::{cardset::CardSet, combination::Combination, combination::CombinationType};
 use std::str::FromStr;
 
 fn check_parse(input: &str, card_index: u32) {
@@ -79,10 +79,6 @@ fn parse_multiple() {
     );
     assert_eq!(CardSet::from_str("8♠2♣Q♣").unwrap().count_cards(), 3);
 }
-#[test]
-fn size_of_comb() {
-    assert_eq!(std::mem::size_of::<Combination>(), 8);
-}
 
 fn comb(input: &[&str]) -> Combination {
     input
@@ -99,12 +95,12 @@ Straight */
 #[test]
 fn straight_flush() {
     assert_eq!(
-        comb(&["2♥", "3♥", "4♥", "5♥", "6♥"]).comb_type(),
-        CombType::StraightFlush
+        comb(&["2♥", "3♥", "4♥", "5♥", "6♥"]).category(),
+        CombinationType::StraightFlush
     );
     assert_eq!(
-        comb(&["10♠", "J♠", "Q♠", "K♠", "A♠"]).comb_type(),
-        CombType::StraightFlush
+        comb(&["10♠", "J♠", "Q♠", "K♠", "A♠"]).category(),
+        CombinationType::RoyalFlush
     );
     assert!(comb(&["10♠", "J♠", "Q♠", "K♠", "A♠"]) > comb(&["2♠", "3♥", "4♠", "5♥", "6♠"]));
     assert!(comb(&["10♠", "J♠", "Q♠", "K♠", "A♠"]) > comb(&["9♠", "10♠", "J♠", "Q♠", "K♠"]));
@@ -118,8 +114,8 @@ FullHouse*/
 #[test]
 fn poker() {
     assert_eq!(
-        comb(&["10♠", "10♥", "10♦", "10♣", "3♠"]).comb_type(),
-        CombType::Poker
+        comb(&["10♠", "10♥", "10♦", "10♣", "3♠"]).category(),
+        CombinationType::Poker
     );
     assert!(comb(&["10♠", "10♥", "10♦", "10♣", "4♠"]) > comb(&["10♠", "10♥", "10♦", "10♣", "3♠"]));
     assert!(comb(&["10♠", "10♥", "10♦", "10♣", "2♠"]) > comb(&["9♠", "9♥", "9♦", "9♣", "A♠"]));
@@ -132,12 +128,12 @@ Flush*/
 #[test]
 fn full_house() {
     assert_eq!(
-        comb(&["10♠", "10♥", "10♦", "2♣", "2♠"]).comb_type(),
-        CombType::FullHouse
+        comb(&["10♠", "10♥", "10♦", "2♣", "2♠"]).category(),
+        CombinationType::FullHouse
     );
     assert_eq!(
-        comb(&["2♠", "2♥", "2♦", "10♣", "10♠"]).comb_type(),
-        CombType::FullHouse
+        comb(&["2♠", "2♥", "2♦", "10♣", "10♠"]).category(),
+        CombinationType::FullHouse
     );
     assert!(comb(&["A♠", "A♥", "A♦", "Q♣", "Q♠"]) > comb(&["A♠", "A♥", "A♦", "J♣", "J♠"]));
     assert!(comb(&["10♠", "10♥", "10♦", "2♣", "2♠"]) > comb(&["9♠", "9♥", "9♦", "A♣", "A♠"]));
@@ -152,19 +148,26 @@ Straight
 #[test]
 fn flush() {
     assert_eq!(
-        comb(&["2♥", "3♥", "5♥", "2♦", "3♦"]).comb_type(),
-        CombType::Flush
+        comb(&["A♥", "2♥", "3♥", "4♥", "6♥"]).category(),
+        CombinationType::Flush
     );
     assert_eq!(
-        comb(&["2♠", "3♠", "5♠", "2♣", "3♣"]).comb_type(),
-        CombType::Flush
+        comb(&["2♣", "3♣", "4♣", "5♣", "7♣"]).category(),
+        CombinationType::Flush
     );
-    assert!(comb(&["2♥", "3♥", "5♥", "2♦", "3♦"]) > comb(&["2♥", "3♥", "4♥", "2♦", "3♦"]));
-    assert!(comb(&["2♥", "3♥", "4♥", "2♦", "3♦"]) > comb(&["10♠", "J♥", "Q♠", "K♠", "A♠"]));
-    assert!(comb(&["2♥", "3♥", "4♥", "2♦", "3♦"]) > comb(&["A♥", "K♥", "Q♥", "A♦", "J♦"]));
-    assert!(comb(&["2♥", "3♥", "4♥", "2♦", "8♦"]) > comb(&["A♥", "K♥", "Q♥", "9♦", "J♦"]));
-    assert!(comb(&["A♥", "2♥", "Q♥", "A♦", "2♦"]) > comb(&["A♥", "K♥", "Q♥", "A♦", "J♦"]));
-    assert!(comb(&["5♥", "3♥", "2♥", "5♦", "3♦"]) > comb(&["A♥", "3♥", "2♥", "A♦", "7♦"]));
+    assert_eq!(
+        comb(&["9♠", "J♠", "Q♠", "K♠", "A♠"]).category(),
+        CombinationType::Flush
+    );
+    assert_eq!(
+        comb(&["10♠", "J♥", "Q♠", "K♠", "A♠"]).category(),
+        CombinationType::Straight
+    );
+    assert!(comb(&["3♥", "4♥", "5♥", "7♥", "9♥"]) > comb(&["2♥", "3♥", "4♥", "5♥", "7♥"]));
+    assert!(comb(&["2♥", "4♥", "6♥", "7♥", "9♥"]) > comb(&["2♥", "3♥", "6♥", "7♥", "9♥"]));
+    assert!(comb(&["2♥", "3♥", "4♥", "6♥", "7♥"]) > comb(&["10♠", "J♥", "Q♠", "K♠", "A♠"]));
+    assert!(comb(&["2♥", "3♥", "4♥", "5♥", "7♥"]) == comb(&["2♣", "3♣", "4♣", "5♣", "7♣"]));
+    assert!(comb(&["2♥", "3♥", "4♥", "6♥", "7♥"]) < comb(&["2♥", "2♣", "2♦", "3♦", "3♣"]));
 }
 /*
 Flush
@@ -173,8 +176,20 @@ Tris */
 #[test]
 fn straight() {
     assert_eq!(
-        comb(&["10♠", "J♥", "Q♠", "K♠", "A♠"]).comb_type(),
-        CombType::Straight
+        comb(&["3♠", "4♥", "5♠", "6♠", "7♠"]).category(),
+        CombinationType::Straight
+    );
+    assert_eq!(
+        comb(&["A♠", "2♥", "3♥", "4♠", "5♠"]).category(),
+        CombinationType::Straight
+    );
+    assert_eq!(
+        comb(&["2♠", "4♥", "5♠", "6♠", "7♠"]).category(),
+        CombinationType::HighCard
+    );
+    assert_eq!(
+        comb(&["10♠", "J♥", "Q♠", "K♠", "A♠"]).category(),
+        CombinationType::Straight
     );
     assert!(comb(&["10♠", "J♥", "Q♠", "K♠", "A♠"]) > comb(&["9♠", "10♠", "J♠", "Q♥", "K♠"]));
     assert!(comb(&["2♠", "3♥", "4♠", "5♠", "6♠"]) > comb(&["A♠", "2♠", "3♠", "4♥", "5♠"]));
@@ -188,8 +203,8 @@ TwoPairs */
 #[test]
 fn tris() {
     assert_eq!(
-        comb(&["5♠", "5♥", "5♣", "Q♥", "K♠"]).comb_type(),
-        CombType::Tris
+        comb(&["5♠", "5♥", "5♣", "Q♥", "K♠"]).category(),
+        CombinationType::Tris
     );
     assert!(comb(&["5♠", "5♥", "5♣", "Q♥", "K♠"]) > comb(&["5♠", "5♥", "5♣", "Q♥", "J♠"]));
     assert!(comb(&["5♠", "5♥", "5♣", "Q♥", "K♠"]) > comb(&["5♠", "5♥", "5♣", "10♥", "J♠"]));
@@ -203,8 +218,8 @@ Pair */
 #[test]
 fn two_pairs() {
     assert_eq!(
-        comb(&["10♠", "10♥", "Q♠", "Q♦", "A♠"]).comb_type(),
-        CombType::TwoPairs
+        comb(&["10♠", "10♥", "Q♠", "Q♦", "A♠"]).category(),
+        CombinationType::TwoPairs
     );
     assert!(comb(&["10♠", "10♥", "Q♠", "Q♦", "A♠"]) > comb(&["10♠", "10♥", "Q♠", "Q♦", "J♠"]));
     assert!(comb(&["10♠", "10♥", "K♠", "K♦", "2♠"]) > comb(&["10♠", "10♥", "Q♠", "Q♦", "A♠"]));
@@ -219,8 +234,8 @@ HighCard */
 #[test]
 fn pair() {
     assert_eq!(
-        comb(&["2♠", "2♥", "3♠", "4♦", "5♠"]).comb_type(),
-        CombType::Pair
+        comb(&["2♠", "2♥", "3♠", "4♦", "5♠"]).category(),
+        CombinationType::Pair
     );
     assert!(comb(&["10♠", "10♥", "2♠", "3♦", "5♠"]) > comb(&["10♠", "10♥", "2♠", "3♦", "4♠"]));
     assert!(comb(&["10♠", "10♥", "2♠", "3♦", "4♠"]) > comb(&["9♠", "9♥", "A♠", "K♦", "Q♠"]));
@@ -234,12 +249,13 @@ HighCard */
 #[test]
 fn high_card() {
     assert_eq!(
-        comb(&["A♠", "K♥", "2♠", "3♠", "4♠"]).comb_type(),
-        CombType::HighCard
+        comb(&["A♠", "K♥", "2♠", "3♠", "4♠"]).category(),
+        CombinationType::HighCard
     );
     assert!(comb(&["A♠", "J♥", "Q♠", "K♠", "9♠"]) > comb(&["A♠", "J♥", "Q♠", "K♠", "8♠"]));
     assert!(comb(&["A♠", "10♥", "7♠", "6♠", "5♠"]) > comb(&["A♠", "9♥", "7♠", "6♠", "5♠"]));
     assert!(comb(&["A♠", "2♥", "3♠", "4♠", "5♠"]) > comb(&["K♠", "Q♥", "J♠", "10♠", "8♠"]));
+    assert!(comb(&["7♥", "A♦", "2♠", "5♠", "7♣"]) > comb(&["5♥", "A♦", "2♠", "5♠", "7♣"]));
 }
 
 #[test]

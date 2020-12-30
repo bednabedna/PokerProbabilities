@@ -4,16 +4,21 @@ use poker::cardset::{CardParseError, CardSet};
 use rayon::prelude::*;
 use std::{str::FromStr, time::Instant};
 
+/// Max cards allowed in player hand
+const MAX_HAND: u32 = 2;
+/// Max cards allowed in table
+const MAX_TABLE: u32 = 5;
+
 fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
     assert!(players >= 2 && players <= 8);
     let hc = hand.count_cards();
-    assert!(hc <= 2);
+    assert!(hc <= MAX_HAND);
     assert!((hand & table).is_empty());
-    let hand_draw_count = 2 - hc;
+    let hand_draw_count = MAX_HAND - hc;
     let tc = table.count_cards();
-    assert!(tc <= 3);
+    assert!(tc <= MAX_TABLE);
     let deck = !(hand | table);
-    let table_draw_count = 3 - tc;
+    let table_draw_count = MAX_TABLE - tc;
     let opponents = players - 1;
     (0..games)
         .into_par_iter()
@@ -22,7 +27,7 @@ fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
             let table = table | deck.draw(table_draw_count);
             let my_comb = (hand | deck.draw(hand_draw_count) | table).comb();
             for _ in 0..opponents {
-                let player_comb = (deck.draw(2) | table).comb();
+                let player_comb = (deck.draw(MAX_HAND) | table).comb();
                 if player_comb > my_comb {
                     return 0;
                 }
@@ -35,12 +40,12 @@ fn simulate(hand: CardSet, table: CardSet, players: u32, games: u32) -> u32 {
 fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
     assert!(players >= 2 && players <= 8);
     let hc = hand.count_cards();
-    assert!(hc <= 2);
-    let hand_draw_count = 2 - hc;
+    assert!(hc <= MAX_HAND);
+    let hand_draw_count = MAX_HAND - hc;
     let table_cards_count = table.count_cards();
-    assert!(table_cards_count <= 3);
+    assert!(table_cards_count <= MAX_TABLE);
     assert!((hand & table).is_empty());
-    let table_draw_count = 3 - table_cards_count;
+    let table_draw_count = MAX_TABLE - table_cards_count;
     let deck = !(hand | table);
     let mut results = Vec::with_capacity(players as usize);
     let mut rows = Vec::with_capacity(players as usize);
@@ -54,7 +59,7 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
 
         results.push((hand, (hand | table).comb()));
         for _ in 0..players - 1 {
-            let player_cards = deck.draw(2);
+            let player_cards = deck.draw(MAX_HAND);
             let player_comb = (player_cards | table).comb();
             results.push((player_cards, player_comb));
         }
@@ -65,7 +70,7 @@ fn print_simulation(hand: CardSet, table: CardSet, players: u32, games: u32) {
             let won = winning_combination == comb;
             rows.push((
                 format!("    {:?}", cards),
-                format!("{:?}", comb.comb_type()),
+                format!("{}", comb.name()),
                 if won { "[W]" } else { "" },
             ));
         }
@@ -139,9 +144,9 @@ fn execute() -> Result<(), SimulationError> {
 
     if args.players < 2 || args.players > 8 {
         Err(SimulationError::WrongNumberOfPlayers(args.players))
-    } else if hand.count_cards() > 2 {
+    } else if hand.count_cards() > MAX_HAND {
         Err(SimulationError::InvalidHand(hand))
-    } else if table.count_cards() > 3 {
+    } else if table.count_cards() > MAX_TABLE {
         Err(SimulationError::InvalidTable(table))
     } else if !(table & hand).is_empty() {
         Err(SimulationError::InvalidHandTableComposition(table & hand))
@@ -169,10 +174,10 @@ fn execute() -> Result<(), SimulationError> {
             println!("No hand, equal winning probability among players.");
         } else {
             println!(
-                "({:?}) ({:?}) {:?}",
+                "({:?}) ({:?}) = {}",
                 hand,
                 table,
-                (hand | table).comb().comb_type()
+                (hand | table).comb().name()
             );
         }
 
@@ -206,12 +211,14 @@ fn main() {
             SimulationError::HandParseError(e) => print_card_parse_error(e, "hand"),
             SimulationError::TableParseError(e) => print_card_parse_error(e, "table"),
             SimulationError::InvalidHand(hand) => println!(
-                "Error invalid hand: hand has {} cards, maximum 2 allowed",
-                hand.count_cards()
+                "Error invalid hand: hand has {} cards, maximum is {}",
+                hand.count_cards(),
+                MAX_HAND
             ),
             SimulationError::InvalidTable(table) => println!(
-                "Error invalid table: table has {} cards, maximum 3 allowed",
-                table.count_cards()
+                "Error invalid table: table has {} cards, maximum is {}",
+                table.count_cards(),
+                MAX_TABLE
             ),
             SimulationError::InvalidHandTableComposition(composition) => println!(
                 "Error: table and hand are sharing the following cards: {:?}",
